@@ -1,0 +1,55 @@
+resources:
+  jobs:
+    wind_power_etl_job:
+      name: wind_power_etl_job
+
+      parameters:
+        - name: catalog
+          default: dev
+        - name: bronze_schema
+          default: bronze
+        - name: silver_schema
+          default: silver
+        - name: gold_schema
+          default: gold
+        - name: model_schema
+          default: ml
+        - name: dataset_path
+          default: /Volumes/dev/bronze/files/Turbine_Data.csv
+        - name: forecast_hours
+          default: '24'
+
+      tasks:
+        - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ../notebooks/bronze/01_ingest_wind_data.py
+
+        - task_key: silver_transform
+          depends_on:
+            - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ../notebooks/silver/02_transform.py
+
+        - task_key: gold_features
+          depends_on:
+            - task_key: silver_transform
+          notebook_task:
+            notebook_path: ../notebooks/gold/03_gold.py
+
+        - task_key: train_model
+          depends_on:
+            - task_key: gold_features
+          notebook_task:
+            notebook_path: ../notebooks/ml/04_train_model.py
+
+        - task_key: batch_inference
+          depends_on:
+            - task_key: train_model
+          notebook_task:
+            notebook_path: ../notebooks/ml/05_batch_inference.py
+
+        - task_key: forecasting_future
+          depends_on:
+            - task_key: batch_inference
+          notebook_task:
+            notebook_path: ../notebooks/ml/06_forecasting_future.py
